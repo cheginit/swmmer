@@ -113,16 +113,12 @@ wheel.packages = [ "src/swmmer" ]
 wheel.py-api = "py3"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
-# cibuildwheel-only generator choices, matching swmm-toolkit (which builds this
-# same engine). Gated on the CIBUILDWHEEL env var so the pixi conda editable
-# builds keep the scikit-build-core default (Ninja + find_package(OpenMP)).
-[[tool.scikit-build.overrides]]
-# Windows: the runner has a full Visual Studio; its generator needs no vcvars
-# activation (unlike Ninja).
-if.env.CIBUILDWHEEL = true
-if.platform-system = "win32"
-cmake.args = [ "-GVisual Studio 17 2022" ]
-
+# cibuildwheel-only generator choice for macOS, gated on the CIBUILDWHEEL env var
+# so the pixi conda editable build keeps the scikit-build-core default (Ninja +
+# find_package(OpenMP)). Windows is left to the scikit-build-core default (the
+# Visual Studio generator, auto-detecting whichever VS the runner ships) rather
+# than a pinned "-GVisual Studio 17 2022": the runner now has VS 2026, and a
+# version pin fails with "could not find any instance of Visual Studio".
 [[tool.scikit-build.overrides]]
 # macOS: the Xcode generator lets upstream openmp.cmake build LLVM OpenMP from
 # source (see CMakeLists.txt) targeting 11.0, so the bundled libomp does not pin
