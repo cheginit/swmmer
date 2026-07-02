@@ -25,6 +25,15 @@ if(APPLE AND NOT DEFINED ENV{CIBUILDWHEEL})
   file(WRITE ${SWMM_DIR}/cmake/openmp.cmake "find_package(OpenMP REQUIRED C)\n")
 endif()
 
+# Windows: SWMM's install() calls InstallRequiredSystemLibraries, which vendors
+# the MSVC runtime DLLs next to the engine. Also include the OpenMP runtime
+# (vcomp140.dll), which swmm5.dll links via /openmp, so the wheel runs on a clean
+# machine without the VC++ redistributable. (Set before add_subdirectory so the
+# child scope's InstallRequiredSystemLibraries picks it up.)
+if(WIN32)
+  set(CMAKE_INSTALL_OPENMP_LIBRARIES ON)
+endif()
+
 # Build the engine. SWMM's own install() rules place runswmm in bin/ and the
 # shared libs in lib/; wheel.install-dir prepends swmmer/_engine/, giving the
 # bin/ + ../lib/ layout that runswmm's RPATH (@loader_path/../lib, $ORIGIN/../lib)

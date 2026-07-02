@@ -228,10 +228,12 @@ linux.manylinux-x86_64-image = "manylinux_2_28"
 # it. Pin the deployment target so the wheel tag and delocate's check agree.
 macos.environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
 macos.repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
-# The wheel ships runswmm.exe + DLLs, not a Python extension, so delvewheel needs
-# both --analyze-existing (DLL deps) and --analyze-existing-exes (the exe's deps,
-# e.g. the MSVC/OpenMP runtime vcomp140.dll) to vendor the full dependency chain.
-windows.repair-wheel-command = "delvewheel repair --analyze-existing --analyze-existing-exes -w {dest_dir} {wheel}"
+# No wheel repair on Windows: the engine is a standalone exe + DLLs (not a Python
+# extension), and CMake already vendors the full runtime (swmm5/swmm-output next
+# to runswmm.exe, plus the MSVC + OpenMP runtime via InstallRequiredSystemLibraries)
+# into _engine/bin. delvewheel cannot resolve the exe->dll chain inside that subdir
+# and is redundant here, so skip it (empty command disables repair).
+windows.repair-wheel-command = ""
 
 [tool.ruff]
 target-version = "py312"
