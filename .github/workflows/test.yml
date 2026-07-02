@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - '**'
+    tags-ignore:
+    - '**'
+  pull_request:
+    branches:
+    - '**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: unit - ${{ matrix.environment }}, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        environment: [test312, test314]
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive  # engine source for the scikit-build-core editable build
+        fetch-depth: 0  # setuptools-scm reads tags for the version
+    - uses: prefix-dev/setup-pixi@v0.10.0
+      with:
+        pixi-version: v0.71.2
+        environments: ${{ matrix.environment }}
+        activate-environment: ${{ matrix.environment }}
+        locked: true
+    - name: Run unit tests
+      run: pixi r test
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v7
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: ${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}
