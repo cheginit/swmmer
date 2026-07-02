@@ -21,7 +21,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Windows is not tested here: the engine can't build inside the pixi conda
+        # env on Windows (conda MSVC + Ninja). Windows wheels are built and
+        # smoketested with the system Visual Studio toolchain in release.yml
+        # (the approach swmm-toolkit uses).
+        os: [ubuntu-latest, macos-latest]
         environment: [test312, test314]
 
     steps:

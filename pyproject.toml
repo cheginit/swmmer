@@ -113,10 +113,9 @@ wheel.packages = [ "src/swmmer" ]
 wheel.py-api = "py3"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
-# The CMake generator is selected per build path via the CMAKE_GENERATOR env var
-# (Ninja for the pixi conda build, the VS generator for cibuildwheel), since the
-# two Windows toolchains differ. macOS/Linux use the scikit-build-core default
-# (Ninja) with find_package(OpenMP).
+# macOS/Linux build the engine with the scikit-build-core default (Ninja) +
+# find_package(OpenMP). Windows wheels are built by cibuildwheel with the system
+# Visual Studio generator (see [tool.cibuildwheel] windows.environment below).
 [tool.pixi.dependencies]
 # Conda holds ONLY the system/build toolchain (compilers, CMake, Ninja, the
 # OpenMP runtime) that every environment needs to compile the bundled EPA SWMM
@@ -186,12 +185,6 @@ typecheck = "pyright"
 
 [tool.pixi.pypi-dependencies]
 swmmer = { path = ".", editable = true }
-
-[tool.pixi.target.win-64.activation]
-# Inside the pixi conda env the vs2022_win-64 activation provides cl.exe for a
-# command-line (Ninja) build; the VS generator can't find a full VS install
-# there, so pin the generator to Ninja (matching Linux/macOS).
-env = { CMAKE_GENERATOR = "Ninja" }
 
 [tool.pixi.tasks]
 # Usage: pixi r release v0.1.0
