@@ -24,6 +24,33 @@ from pathlib import Path
 _INP = Path(__file__).resolve().parent / "data" / "swmmer" / "test_example1.inp"
 
 
+def _verify_signatures(engine: Path) -> None:
+    """On macOS, assert every bundled Mach-O has a valid code signature.
+
+    delocate's install-name rewrites can invalidate the dylibs' ad-hoc
+    signatures; Apple Silicon then SIGKILLs them on load. The model run below
+    does NOT reliably catch this (the CI runner's enforcement is lax), so verify
+    explicitly with codesign, which is byte-level and enforcement-independent.
+    """
+    import platform
+    import subprocess
+
+    if platform.system() != "Darwin":
+        return
+    lib = engine.parent.parent / "lib"
+    targets = [engine, *sorted(lib.glob("*.dylib"))]
+    for target in targets:
+        proc = subprocess.run(
+            ["codesign", "--verify", "--strict", str(target)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise SystemExit(f"invalid code signature: {target}\n{proc.stderr.strip()}")
+    print(f"  codesign: {len(targets)} Mach-O files valid")
+
+
 def main() -> int:
     """Run Example 1 through the installed wheel's engine and validate the results."""
     import tempfile
@@ -48,6 +75,10 @@ def main() -> int:
         raise SystemExit(f"bundled engine missing: {engine}")
     if not outlib.is_file():
         raise SystemExit(f"bundled output library missing: {outlib}")
+
+    # 1b. macOS: the bundled Mach-O files must be validly signed (delocate can
+    #     break this, and arm64 SIGKILLs invalid dylibs on load).
+    _verify_signatures(engine)
 
     # 2. the engine actually runs a model and writes a readable .out. Run in a
     #    temp dir so the read-only fixture tree stays clean.
