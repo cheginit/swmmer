@@ -86,4 +86,4 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 
 ## License
 
-MIT License. See [LICENSE](LICENSE.md) for details.
+BSD 3-Clause License. See [LICENSE](LICENSE) for details.
