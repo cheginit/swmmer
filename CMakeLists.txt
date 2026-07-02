@@ -14,12 +14,14 @@ if(NOT EXISTS ${SWMM_DIR}/CMakeLists.txt)
 endif()
 
 # macOS only: upstream cmake/openmp.cmake FetchContent-builds LLVM OpenMP from
-# the network during the build. Replace it with find_package so we link the
-# toolchain/system libomp instead (conda-forge llvm-openmp for local dev, brew
-# libomp under cibuildwheel) — no build-time network, toolchain-consistent
-# runtime. Mirrors the upstream conda recipe's build patch. Linux/Windows
-# already use find_package(OpenMP), so this is macOS-only.
-if(APPLE)
+# source (for the Xcode generator). For local/pixi dev we replace it with
+# find_package so we link the conda-forge llvm-openmp already in the env, which
+# is faster and needs no build-time network. Under cibuildwheel we keep the
+# upstream from-source build (via the Xcode generator, see the darwin
+# scikit-build override): it targets CMAKE_OSX_DEPLOYMENT_TARGET, so the bundled
+# libomp does not pin the wheel to the runner's macOS version the way brew's
+# libomp would. Linux/Windows already use find_package(OpenMP).
+if(APPLE AND NOT DEFINED ENV{CIBUILDWHEEL})
   file(WRITE ${SWMM_DIR}/cmake/openmp.cmake "find_package(OpenMP REQUIRED C)\n")
 endif()
 
