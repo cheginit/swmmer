@@ -1,0 +1,439 @@
+[build-system]
+build-backend = "scikit_build_core.build"
+requires = [
+  "scikit-build-core>=0.10",
+  "setuptools-scm>=8",
+]
+
+[project]
+name = "swmmer"
+description = "A numpy-only toolkit for EPA SWMM file and engine I/O."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [ { name = "Taher Chegini", email = "cheginit@gmail.com" } ]
+requires-python = ">=3.12"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "numpy>=2",
+]
+optional-dependencies.dev = [
+  "git-cliff",
+  "ipykernel",
+  "ipywidgets",
+  "jupytext",
+  "matplotlib",
+  "nbconvert",
+  "pandas",
+  "pytest",
+  "xarray",
+]
+optional-dependencies.docs = [
+  "jupytext",
+  "mike>=2",
+  "mkdocs>=1.6",
+  "mkdocs-jupyter",
+  "mkdocs-materialx",
+  "mkdocstrings[python]>=0.27",
+  "ruff",
+]
+optional-dependencies.lint = [
+  "codespell",
+  "pre-commit",
+]
+# Optional result-converter backends: SwmmResults.to_pandas() / to_xarray().
+optional-dependencies.pandas = [
+  "pandas",
+]
+# Optional plotting backend for swmmer.plot (network map + longitudinal profile).
+optional-dependencies.plot = [
+  "matplotlib",
+]
+optional-dependencies.test = [
+  "coverage[toml]",
+  "matplotlib",
+  "pandas",
+  "pytest-cov",
+  "pytest-sugar",
+  "xarray",
+]
+optional-dependencies.typecheck = [
+  "matplotlib",
+  "pyright",
+]
+optional-dependencies.xarray = [
+  "xarray",
+]
+urls.Changelog = "https://github.com/cheginit/swmmer/blob/main/CHANGELOG.md"
+urls.CI = "https://github.com/cheginit/swmmer/actions"
+urls.Documentation = "https://cheginit.github.io/swmmer"
+urls.Homepage = "https://cheginit.github.io/swmmer"
+urls.Issues = "https://github.com/cheginit/swmmer/issues"
+# Thin launcher for the bundled engine so `runswmm` works from the shell / PATH.
+scripts.runswmm = "swmmer.run:_runswmm_cli"
+
+[tool.setuptools_scm]
+
+[tool.scikit-build]
+# Build the EPA SWMM engine (CMakeLists.txt -> extern submodule) into the wheel.
+minimum-version = "build-system.requires"
+# Per-tag build dir so incremental rebuilds (editable dev) reuse CMake output.
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+cmake.version = ">=3.23"
+ninja.version = ">=1.11"
+# Vendor the pinned SWMM source into the sdist so it builds offline.
+sdist.include = [ "extern/Stormwater-Management-Model" ]
+# Keep wheels lean: ship only the runtime bin/ + lib/, not headers/cmake config.
+wheel.exclude = [
+  "swmmer/_engine/cmake/**",
+  "swmmer/_engine/CONTRIBUTORS",
+  "swmmer/_engine/include/**",
+  "swmmer/_engine/LICENSE",
+]
+# CMake-installed engine (runswmm + libs) lands under swmmer/_engine/{bin,lib}.
+wheel.install-dir = "swmmer/_engine"
+wheel.packages = [ "src/swmmer" ]
+# No Python C-extension -> ABI-independent platform wheels (one per OS/arch,
+# not one per interpreter).
+wheel.py-api = "py3"
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+overrides = [
+  # Windows: build the engine with the MSVC generator (OpenMP comes from MSVC's
+  # vcomp). macOS/Linux use the scikit-build-core default (Ninja) with
+  # find_package(OpenMP).
+  { if.platform-system = "win32", cmake.args = [ "-GVisual Studio 17 2022" ] },
+]
+
+[tool.pixi.dependencies]
+# Conda holds ONLY the system/build toolchain (compilers, CMake, Ninja, the
+# OpenMP runtime) that every environment needs to compile the bundled EPA SWMM
+# engine via scikit-build-core's editable install of swmmer. Everything else
+# (numpy, pandas, xarray, matplotlib, …) is installed from PyPI to avoid
+# conda/PyPI file clobbering.
+c-compiler = "*"
+cxx-compiler = "*"
+cmake = ">=3.23"
+ninja = ">=1.11"
+llvm-openmp = "*"
+
+[tool.pixi.environments]
+dev = { features = [ "dev", "py314" ] }
+test312 = { features = [ "test", "py312" ] }
+test314 = { features = [ "test", "py314" ] }
+typecheck = { features = [ "typecheck", "py314" ] }
+lint = { features = [ "lint", "py314" ], no-default-feature = true }
+docs = { features = [ "docs", "py314" ] }
+
+[tool.pixi.feature.dev.tasks]
+# Preview unreleased changes without writing to CHANGELOG.md
+changelog = "git cliff -c pyproject.toml --unreleased"
+# Update CHANGELOG.md with all unreleased commits
+changelog-update = "git cliff -c pyproject.toml -o CHANGELOG.md"
+# Sync all percent-format .py scripts → paired .ipynb files
+nb-sync = "jupytext --sync docs/examples/*.py"
+# Execute all notebooks in-place (requires .ipynb to exist; run nb-sync first).
+# The extra_arguments raises the kernel log level so it stops warning about the
+# unencrypted-TCP kernel transport on every run.
+nb-execute = """\
+  jupyter nbconvert --to notebook --execute --inplace \
+  --ExecutePreprocessor.extra_arguments='--IPKernelApp.log_level=ERROR' docs/examples/*.ipynb\
+  """
+# Full workflow: sync .py → .ipynb, then execute — use before building docs or committing
+nb-run = { depends-on = [ "nb-sync", "nb-execute" ] }
+# Pair an existing .ipynb with a .py counterpart (one-time setup for imported notebooks)
+nb-pair = "jupytext --set-formats 'ipynb,py:percent' docs/examples/*.ipynb"
+# Strip all cell outputs from .ipynb files (keeps repo diff clean)
+nb-clear = "jupyter nbconvert --ClearOutputPreprocessor.enabled=True --to notebook --inplace docs/examples/*.ipynb"
+
+[tool.pixi.feature.docs.tasks]
+docs-build = "mkdocs build --strict"
+docs-serve = { cmd = "mkdocs serve", depends-on = [ "docs-build" ] }
+docs-deploy = "mike deploy --push --title latest latest"
+docs-release = "mike deploy --push --update-aliases $(git describe --tags --abbrev=0) stable"
+
+[tool.pixi.feature.lint.tasks]
+lint = "pre-commit run --all-files"
+pcupdate = "pre-commit autoupdate"
+spell = "codespell -w"
+
+[tool.pixi.feature.py312.dependencies]
+python = "~=3.12.0"
+
+[tool.pixi.feature.py314.dependencies]
+python = "~=3.14.0"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest"
+test-all = "pytest"
+report = { cmd = [ "coverage", "report" ], depends-on = [ "test-all" ] }
+html = { cmd = [ "coverage", "html" ], depends-on = [ "report" ] }
+
+[tool.pixi.feature.typecheck.tasks]
+typecheck = "pyright"
+
+[tool.pixi.pypi-dependencies]
+swmmer = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+# Usage: pixi r release v0.1.0
+release = { cmd = "git tag -a {{ version }} -m {{ version }} && git push && git push --tags", args = [
+  { arg = "version" },
+] }
+
+[tool.pixi.workspace]
+channels = [ "conda-forge" ]
+platforms = [ "linux-64", "osx-arm64", "win-64" ]
+
+[tool.cibuildwheel]
+# Wheels are py3-none-<platform> (no Python C-extension), so one build per
+# platform suffices — drive it with a single interpreter.
+build = [ "cp312-*" ]
+# The engine + OpenMP toolchain targets glibc (manylinux); musl/Alpine is not built.
+skip = [ "*musllinux*" ]
+build-frontend = "build"
+# Smoketest every repaired wheel in a fresh venv: run EPA Example 1 through the
+# bundled engine and read its .out back, so a botched build (missing/unloadable
+# engine or shared libs, bad rpath, failed delocate/delvewheel repair) fails the
+# job and never publishes. Deliberately numpy-only (no test-extras): only the
+# compiled engine varies per wheel; pure Python paths are covered by test.yml.
+test-command = "python {package}/smoketest.py"
+linux.manylinux-aarch64-image = "manylinux_2_28"
+# Avoid manylinux_2_34 (x86-64-v2) for executable-bearing wheels; 2_28 is safe.
+linux.manylinux-x86_64-image = "manylinux_2_28"
+# find_package(OpenMP) needs libomp; brew provides it, delocate vendors it.
+macos.before-all = "brew install libomp"
+macos.environment = { OpenMP_ROOT = "$(brew --prefix libomp)", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+# Point delocate at brew's libomp so it resolves @rpath/libomp.dylib and vendors
+# it into the wheel (else "Could not find all dependencies").
+macos.repair-wheel-command = "DYLD_LIBRARY_PATH=$(brew --prefix libomp)/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+# Windows ships runswmm.exe + DLLs that delvewheel skips by default;
+# --analyze-existing makes it vendor their DLL deps (MSVC/OpenMP runtime).
+windows.repair-wheel-command = "delvewheel repair --analyze-existing -w {dest_dir} {wheel}"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [ ".pixi", "__pycache__" ]
+lint.select = [ "ALL" ]
+# Adopted from https://github.com/python-attrs/attrs/blob/main/pyproject.toml
+lint.ignore = [
+  "ANN",     # pyright is better at this
+  "B905",    # zip without strict is fine in Python 3.11+
+  "COM",     # ruff format takes care of our commas
+  "D107",    # docstrings for __init__ are optional
+  "D203",    # conflicts with D211
+  "D213",    # conflicts with D212
+  "E501",    # leave line-length enforcement to ruff format
+  "FBT",     # we don't hate bool args around here
+  "ISC001",  # conflicts with ruff format
+  "N",       # we need more naming freedom
+  "PLC0415", # sometimes, imports have to live elsewhere
+  "PLR0913", # yes, many arguments, but most have defaults
+  "PLR2004", # numbers are sometimes fine
+  "TC001",   # first-party typing-only imports are cheap, keep simple for docs
+  "TC003",   # stdlib typing-only imports are cheap, keep simple for docs
+  "TRY301",  # raising within try/except is fine for us
+]
+lint.per-file-ignores."docs/**/*.py" = [
+  "A001",   # shadowing builtins like `license` is fine for file paths
+  "INP001", # no need for init files in docs
+]
+lint.per-file-ignores."docs/**/*.{py,ipynb}" = [
+  # notebook-generated files
+  "B018",
+  "D100",
+  # notebook cells naturally introduce imports mid-file
+  "E402",
+  # we have commented-out code in notebook headers
+  "ERA001",
+  # demo notebooks print their results; keep the print calls
+  "T201",
+]
+lint.per-file-ignores."smoketest.py" = [
+  "EM",     # inline exception messages are fine in a standalone script
+  "T201",   # the smoketest prints its progress
+  "TRY003", # long exception messages are fine here
+]
+lint.per-file-ignores."tests/*.py" = [
+  "B015",    # pointless comparison in tests aren't pointless
+  "B017",    # pytest.raises(Exception) is fine
+  "B018",    # pointless expressions in tests aren't pointless
+  "BLE001",  # Blind excepts are fine in tests
+  "D",       # No need for docstrings in tests
+  "DTZ",     # datetime best practices don't matter in tests
+  "EM",      # no need for exception msg hygiene in tests
+  "INP001",  # no need for init files in tests
+  "PLR0124", # pointless comparison in tests aren't pointless
+  "PT011",   # broad is fine
+  "PT012",   # sometimes we need more than a single stmt
+  "RUF012",  # we don't do ClassVar annotations in tests
+  "S",       # security concerns don't matter in tests
+  "SIM201",  # sometimes we need to check `not ==`
+  "SIM202",  # sometimes we need to check `not ==`
+  "SIM300",  # Yoda rocks in asserts
+  "SLF001",  # accessing protected members is fine in tests
+  "TRY",     # exception best practices don't matter in tests
+]
+lint.extend-safe-fixes = [
+  # module level imports
+  "E402",
+  # break down assert
+  "PT018",
+  # absolute imports
+  "TID252",
+]
+# Require lazy imports by default, except for modules with import-time side effects.
+lint.flake8-tidy-imports.require-lazy = { include = "all", exclude = [ "sitecustomize" ] }
+lint.isort.known-first-party = [ "swmmer" ]
+lint.isort.required-imports = [ "from __future__ import annotations" ]
+
+[tool.codespell]
+ignore-words-list = "PERVIOUS,gage,gages,Carrer,anc,pervious"
+skip = "*.inp,*.out,__pycache__,_build,.mypy_cache,.git,./htmlcov,.pixi,pixi.lock,**.ipynb"
+
+[tool.pyproject-fmt]
+expand_tables = [ "tool.git-cliff", "tool.pixi" ]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = [ "src" ]
+ignore = [
+  "docs/examples/*.{py,ipynb}",
+  "tests/*.py",
+]
+# Third-party libs in scientific Python often lack complete stubs
+reportMissingTypeStubs = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+
+[tool.pytest]
+ini_options.testpaths = [
+  "tests",
+]
+ini_options.addopts = [
+  "--import-mode=importlib",
+  "-v",
+  "--cov",
+  "--cov-append",
+  "--cov-branch",
+  "--cov-report=xml",
+  "--junitxml=junit.xml",
+  "--durations=5",
+  "--basetemp=.pytest_tmp",
+]
+ini_options.doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL NUMBER"
+
+[tool.coverage]
+run.branch = true
+run.parallel = true
+run.source_pkgs = [
+  "swmmer",
+]
+paths.source = [ "src", "*/site-packages" ]
+report.exclude_lines = [
+  "if sys.platform",
+  "if TYPE_CHECKING:",
+]
+report.ignore_errors = true
+report.omit = [
+  "**/__init__.py",
+]
+
+[tool.git-cliff.changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+body = '''{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{%- for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | split(pat="\n") | first | upper_first | trim }}{% if commit.breaking %} (**breaking**){% endif %}{% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+{%- endfor %}
+{% endfor %}
+
+{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+### New Contributors
+{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+- @{{ contributor.username }} made their first contribution{% if contributor.pr_number %} in [#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }}){% endif %}
+{%- endfor %}
+{% endif %}
+
+'''
+footer = '''{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% for release in releases -%}
+{% if release.version -%}
+{% if release.previous.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
+{% endif -%}
+{% else -%}
+{% if release.previous.version -%}
+[unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
+{% endif -%}
+{% endif -%}
+{% endfor %}'''
+trim = true
+
+[tool.git-cliff.git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^revert", group = "Fixed" },
+  { message = "^style", group = "Changed" },
+  { message = "^docs", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^build", skip = true },
+  { message = "\\[skip ci\\]", skip = true },
+  { message = "^Merge", skip = true },
+]
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "newest"
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+notebook_metadata_filter = "kernelspec,jupytext"
+cell_metadata_filter = "-all"

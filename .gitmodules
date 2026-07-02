@@ -1,0 +1,6 @@
+[submodule "extern/Stormwater-Management-Model"]
+	path = extern/Stormwater-Management-Model
+	url = https://github.com/pyswmm/Stormwater-Management-Model.git
+	# The CMake build patches cmake/openmp.cmake in place (macOS OpenMP); ignore
+	# that worktree churn so it never dirties the superproject or the scm version.
+	ignore = dirty
