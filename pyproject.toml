@@ -228,7 +228,9 @@ linux.manylinux-x86_64-image = "manylinux_2_28"
 # the darwin scikit-build override) so libomp targets 11.0; delocate then vendors
 # it. Pin the deployment target so the wheel tag and delocate's check agree.
 macos.environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
-macos.repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+# delocate + ad-hoc re-sign: delocate's install-name rewrites invalidate the
+# dylibs' code signatures, which Apple Silicon SIGKILLs on load. See the script.
+macos.repair-wheel-command = "bash tools/repair-macos.sh {delocate_archs} {dest_dir} {wheel}"
 # No wheel repair on Windows: the engine is a standalone exe + DLLs (not a Python
 # extension), and CMake already vendors the full runtime (swmm5/swmm-output next
 # to runswmm.exe, plus the MSVC + OpenMP runtime via InstallRequiredSystemLibraries)
