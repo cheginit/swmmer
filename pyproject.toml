@@ -112,13 +112,11 @@ wheel.packages = [ "src/swmmer" ]
 # not one per interpreter).
 wheel.py-api = "py3"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
-overrides = [
-  # Windows: build the engine with the MSVC generator (OpenMP comes from MSVC's
-  # vcomp). macOS/Linux use the scikit-build-core default (Ninja) with
-  # find_package(OpenMP).
-  { if.platform-system = "win32", cmake.args = [ "-GVisual Studio 17 2022" ] },
-]
 
+# The CMake generator is selected per build path via the CMAKE_GENERATOR env var
+# (Ninja for the pixi conda build, the VS generator for cibuildwheel), since the
+# two Windows toolchains differ. macOS/Linux use the scikit-build-core default
+# (Ninja) with find_package(OpenMP).
 [tool.pixi.dependencies]
 # Conda holds ONLY the system/build toolchain (compilers, CMake, Ninja, the
 # OpenMP runtime) that every environment needs to compile the bundled EPA SWMM
@@ -189,6 +187,12 @@ typecheck = "pyright"
 [tool.pixi.pypi-dependencies]
 swmmer = { path = ".", editable = true }
 
+[tool.pixi.target.win-64.activation]
+# Inside the pixi conda env the vs2022_win-64 activation provides cl.exe for a
+# command-line (Ninja) build; the VS generator can't find a full VS install
+# there, so pin the generator to Ninja (matching Linux/macOS).
+env = { CMAKE_GENERATOR = "Ninja" }
+
 [tool.pixi.tasks]
 # Usage: pixi r release v0.1.0
 release = { cmd = "git tag -a {{ version }} -m {{ version }} && git push && git push --tags", args = [
@@ -221,9 +225,13 @@ macos.environment = { OpenMP_ROOT = "$(brew --prefix libomp)", MACOSX_DEPLOYMENT
 # Point delocate at brew's libomp so it resolves @rpath/libomp.dylib and vendors
 # it into the wheel (else "Could not find all dependencies").
 macos.repair-wheel-command = "DYLD_LIBRARY_PATH=$(brew --prefix libomp)/lib delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
-# Windows ships runswmm.exe + DLLs that delvewheel skips by default;
-# --analyze-existing makes it vendor their DLL deps (MSVC/OpenMP runtime).
-windows.repair-wheel-command = "delvewheel repair --analyze-existing -w {dest_dir} {wheel}"
+# cibuildwheel runs on a runner with a full Visual Studio, so drive the engine
+# build with the VS generator (no manual vcvars activation needed, unlike Ninja).
+windows.environment = { CMAKE_GENERATOR = "Visual Studio 17 2022" }
+# The wheel ships runswmm.exe + DLLs, not a Python extension, so delvewheel needs
+# both --analyze-existing (DLL deps) and --analyze-existing-exes (the exe's deps,
+# e.g. the MSVC/OpenMP runtime vcomp140.dll) to vendor the full dependency chain.
+windows.repair-wheel-command = "delvewheel repair --analyze-existing --analyze-existing-exes -w {dest_dir} {wheel}"
 
 [tool.ruff]
 target-version = "py312"
