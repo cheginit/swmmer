@@ -21,8 +21,18 @@ endif()
 # scikit-build override): it targets CMAKE_OSX_DEPLOYMENT_TARGET, so the bundled
 # libomp does not pin the wheel to the runner's macOS version the way brew's
 # libomp would. Linux/Windows already use find_package(OpenMP).
-if(APPLE AND NOT DEFINED ENV{CIBUILDWHEEL})
-  file(WRITE ${SWMM_DIR}/cmake/openmp.cmake "find_package(OpenMP REQUIRED C)\n")
+if(APPLE)
+  if(DEFINED ENV{CIBUILDWHEEL})
+    # Restore the pristine upstream file so the from-source build is used even if
+    # a prior local/pixi configure patched it in this tree (keeps the wheel build
+    # independent of build order). No-op on a fresh checkout; quiet if not a git
+    # tree (e.g. an sdist build, which does not set CIBUILDWHEEL anyway).
+    execute_process(
+      COMMAND git -C ${SWMM_DIR} checkout -- cmake/openmp.cmake
+      ERROR_QUIET)
+  else()
+    file(WRITE ${SWMM_DIR}/cmake/openmp.cmake "find_package(OpenMP REQUIRED C)\n")
+  endif()
 endif()
 
 # Windows: SWMM's install() calls InstallRequiredSystemLibraries, which vendors

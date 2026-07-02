@@ -10,7 +10,7 @@ readable. A failure here fails the wheels job, which blocks publish.
 Deliberately numpy-only (no pytest, no pandas/xarray/matplotlib): the pure
 Python paths are identical across wheels and covered by the editable test suite
 in ``test.yml``; only the compiled engine varies per platform/arch, so that is
-all this checks. Run it by hand with ``python smoketest.py``.
+all this checks. Run it by hand with ``python tests/smoketest.py``.
 """
 
 from __future__ import annotations
@@ -18,9 +18,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# EPA SWMM Example 1 ships in the repo; cibuildwheel runs {package}/smoketest.py
-# with {package} = the source checkout, so this sibling path always resolves.
-_INP = Path(__file__).resolve().parent / "tests" / "data" / "swmmer" / "test_example1.inp"
+# EPA SWMM Example 1 ships beside this script in tests/data; cibuildwheel runs
+# {package}/tests/smoketest.py with {package} = the source checkout, so this
+# sibling path always resolves.
+_INP = Path(__file__).resolve().parent / "data" / "swmmer" / "test_example1.inp"
 
 
 def main() -> int:

@@ -103,6 +103,7 @@ wheel.exclude = [
   "swmmer/_engine/cmake/**",
   "swmmer/_engine/CONTRIBUTORS",
   "swmmer/_engine/include/**",
+  "swmmer/_engine/lib/*.lib",    # Windows import libs: link-time only, unused at runtime
   "swmmer/_engine/LICENSE",
 ]
 # CMake-installed engine (runswmm + libs) lands under swmmer/_engine/{bin,lib}.
@@ -219,7 +220,7 @@ build-frontend = "build"
 # engine or shared libs, bad rpath, failed delocate/delvewheel repair) fails the
 # job and never publishes. Deliberately numpy-only (no test-extras): only the
 # compiled engine varies per wheel; pure Python paths are covered by test.yml.
-test-command = "python {package}/smoketest.py"
+test-command = "python {package}/tests/smoketest.py"
 linux.manylinux-aarch64-image = "manylinux_2_28"
 # Avoid manylinux_2_34 (x86-64-v2) for executable-bearing wheels; 2_28 is safe.
 linux.manylinux-x86_64-image = "manylinux_2_28"
@@ -274,11 +275,6 @@ lint.per-file-ignores."docs/**/*.{py,ipynb}" = [
   # demo notebooks print their results; keep the print calls
   "T201",
 ]
-lint.per-file-ignores."smoketest.py" = [
-  "EM",     # inline exception messages are fine in a standalone script
-  "T201",   # the smoketest prints its progress
-  "TRY003", # long exception messages are fine here
-]
 lint.per-file-ignores."tests/*.py" = [
   "B015",    # pointless comparison in tests aren't pointless
   "B017",    # pytest.raises(Exception) is fine
@@ -298,6 +294,9 @@ lint.per-file-ignores."tests/*.py" = [
   "SIM300",  # Yoda rocks in asserts
   "SLF001",  # accessing protected members is fine in tests
   "TRY",     # exception best practices don't matter in tests
+]
+lint.per-file-ignores."tests/smoketest.py" = [
+  "T201", # the smoketest prints its progress (EM/TRY already ignored for tests/*)
 ]
 lint.extend-safe-fixes = [
   # module level imports
