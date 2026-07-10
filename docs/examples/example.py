@@ -63,7 +63,7 @@ fig, _ = swmmer.plot.plot_network(data, labels=True, title="EPA SWMM Example 1")
 
 # %%
 work = Path(tempfile.mkdtemp())
-rpt, out = run_swmm(INP, rpt=work / "example1.rpt", out=work / "example1.out")
+rpt, out = run_swmm(INP, rpt=work / "example1.rpt", out=work / "example1.out", progress_bar=True)
 print("report:", rpt.name, "| output:", out.name)
 
 # %% [markdown]

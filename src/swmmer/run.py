@@ -50,7 +50,7 @@ from datetime import datetime, timedelta
 from enum import IntEnum
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import IO, TYPE_CHECKING, Any, Self, cast
 
 import numpy as np
 
@@ -259,6 +259,44 @@ def find_output_lib(engine: Path | None = None) -> Path:
     raise FileNotFoundError(msg)
 
 
+def _run_with_progress(cmd: list[str], inp: Path) -> None:
+    """Run the engine, mirroring its own progress percentage onto a tqdm bar.
+
+    The ``runswmm`` engine already prints a live ``... Running [bar] NN.N%`` line
+    (updated in place with carriage returns); this consumes that stream, parses
+    the percent off each update, and drives a tqdm bar with it.  Requires the
+    optional ``tqdm`` dependency.
+    """
+    import re
+
+    _require("tqdm")  # explicit missing-dependency error (with install hint) before the run
+    from tqdm.auto import tqdm  # tqdm.auto picks the notebook vs terminal widget
+
+    proc = subprocess.Popen(  # noqa: S603 - engine path is resolved, args are file paths
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
+    # PIPE guarantees a stream; cast narrows Popen.stdout (IO | None) for the type checker.
+    stdout = cast("IO[str]", proc.stdout)
+    tail = ""  # rolling stdout tail, kept for the error message on failure
+    with tqdm(total=100, bar_format="{percentage:3.0f}%|{bar}|") as bar:
+        buf = ""
+        # read(1) so we can split on \r (the progress line is a single
+        # \n-line refreshed via \r); the engine's output is tiny, so per-char is fine.
+        for ch in iter(lambda: stdout.read(1), ""):
+            if ch in "\r\n":
+                match = re.search(r"([\d.]+)%", buf)
+                if match:
+                    bar.n = float(match.group(1))
+                    bar.refresh()
+                tail = (tail + buf + "\n")[-2000:]
+                buf = ""
+            else:
+                buf += ch
+    if proc.wait() != 0:
+        msg = f"runswmm failed (rc={proc.returncode}) on {inp}\n{tail}"
+        raise RuntimeError(msg)
+
+
 def run_swmm(
     inp: str | Path,
     rpt: str | Path | None = None,
@@ -266,6 +304,7 @@ def run_swmm(
     *,
     engine: str | Path | None = None,
     quiet: bool = True,
+    progress_bar: bool = False,
 ) -> tuple[Path, Path]:
     """Run a SWMM input file with the ``runswmm`` engine.
 
@@ -281,7 +320,11 @@ def run_swmm(
         Path to the ``runswmm`` executable; auto-located via :func:`find_engine`
         when omitted.
     quiet : bool, default True
-        Capture the engine's stdout/stderr instead of streaming it.
+        Capture the engine's stdout/stderr instead of streaming it.  Ignored
+        when ``progress_bar`` is set (that path consumes stdout for the bar).
+    progress_bar : bool, default False
+        Show a tqdm progress bar driven by the engine's own progress output.
+        Requires the optional ``tqdm`` dependency (``pip install swmmer[tqdm]``).
 
     Returns
     -------
@@ -302,8 +345,12 @@ def run_swmm(
     rpt = prepare_output_file(rpt or inp.with_suffix(".rpt"), what="SWMM report file")
     out = prepare_output_file(out or inp.with_suffix(".out"), what="SWMM output file")
     engine = resolve_input_file(engine, what="runswmm engine") if engine else find_engine()
+    cmd = [str(engine), str(inp), str(rpt), str(out)]
+    if progress_bar:
+        _run_with_progress(cmd, inp)
+        return rpt, out
     proc = subprocess.run(  # noqa: S603 - engine path is resolved, args are file paths
-        [str(engine), str(inp), str(rpt), str(out)],
+        cmd,
         check=False,
         capture_output=quiet,
         text=True,
