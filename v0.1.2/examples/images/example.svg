@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#1e1e2e"/>
+  <rect x="40" y="40" width="720" height="420" rx="8" fill="#313244"/>
+  <rect x="60" y="70" width="300" height="18" rx="4" fill="#cba6f7"/>
+  <rect x="60" y="110" width="500" height="10" rx="3" fill="#6c7086"/>
+  <rect x="60" y="130" width="420" height="10" rx="3" fill="#6c7086"/>
+  <rect x="60" y="170" width="680" height="80" rx="6" fill="#1e1e2e"/>
+  <rect x="80" y="185" width="60" height="10" rx="3" fill="#89b4fa"/>
+  <rect x="155" y="185" width="120" height="10" rx="3" fill="#a6e3a1"/>
+  <rect x="80" y="210" width="200" height="10" rx="3" fill="#cdd6f4"/>
+  <rect x="60" y="280" width="680" height="160" rx="6" fill="#1e1e2e"/>
+  <polyline points="80,420 160,360 240,390 320,330 400,350 480,300 560,320 640,280 720,310"
+            fill="none" stroke="#89b4fa" stroke-width="2.5"/>
+  <circle cx="80" cy="420" r="4" fill="#89b4fa"/>
+  <circle cx="160" cy="360" r="4" fill="#89b4fa"/>
+  <circle cx="240" cy="390" r="4" fill="#89b4fa"/>
+  <circle cx="320" cy="330" r="4" fill="#89b4fa"/>
+  <circle cx="400" cy="350" r="4" fill="#89b4fa"/>
+  <circle cx="480" cy="300" r="4" fill="#89b4fa"/>
+  <circle cx="560" cy="320" r="4" fill="#89b4fa"/>
+  <circle cx="640" cy="280" r="4" fill="#89b4fa"/>
+  <circle cx="720" cy="310" r="4" fill="#89b4fa"/>
+  <text x="400" y="490" font-family="monospace" font-size="11" fill="#6c7086" text-anchor="middle">
+    Replace with a real screenshot: docs/examples/images/example.svg (or .png)
+  </text>
+</svg>
