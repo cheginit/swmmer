@@ -2,37 +2,37 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/reference/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/examples/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/examples/example/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/CHANGELOG/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/CONTRIBUTING/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
     <url>
         <loc>https://cheginit.github.io/swmmer/latest/LICENSE/</loc>
-        <lastmod>2026-07-02</lastmod>
+        <lastmod>2026-07-10</lastmod>
         <changefreq>daily</changefreq>
     </url>
 </urlset>
