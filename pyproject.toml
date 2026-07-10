@@ -39,7 +39,9 @@ optional-dependencies.dev = [
   "matplotlib",
   "nbconvert",
   "pandas",
+  "pandas-stubs",
   "pytest",
+  "tqdm",
   "xarray",
 ]
 optional-dependencies.docs = [
@@ -69,11 +71,20 @@ optional-dependencies.test = [
   "pandas",
   "pytest-cov",
   "pytest-sugar",
+  "tqdm",
   "xarray",
+]
+# Optional progress bar for run_swmm(progress_bar=True).
+optional-dependencies.tqdm = [
+  "tqdm",
 ]
 optional-dependencies.typecheck = [
   "matplotlib",
+  "numpy",
+  "pandas-stubs",
   "pyright",
+  "tqdm",
+  "xarray",
 ]
 optional-dependencies.xarray = [
   "xarray",
@@ -139,6 +150,7 @@ cxx-compiler = "*"
 cmake = ">=3.23"
 ninja = ">=1.11"
 llvm-openmp = "*"
+proj = "*"
 
 [tool.pixi.environments]
 dev = { features = [ "dev", "py314" ] }
@@ -409,10 +421,12 @@ footer = '''{%- macro remote_url() -%}
 {% for release in releases -%}
 {% if release.version -%}
 {% if release.previous.version -%}
+
 [{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
 {% endif -%}
 {% else -%}
 {% if release.previous.version -%}
+
 [unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
 {% endif -%}
 {% endif -%}

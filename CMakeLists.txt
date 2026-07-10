@@ -13,27 +13,13 @@ if(NOT EXISTS ${SWMM_DIR}/CMakeLists.txt)
     "Run: git submodule update --init --recursive")
 endif()
 
-# macOS only: upstream cmake/openmp.cmake FetchContent-builds LLVM OpenMP from
-# source (for the Xcode generator). For local/pixi dev we replace it with
-# find_package so we link the conda-forge llvm-openmp already in the env, which
-# is faster and needs no build-time network. Under cibuildwheel we keep the
-# upstream from-source build (via the Xcode generator, see the darwin
-# scikit-build override): it targets CMAKE_OSX_DEPLOYMENT_TARGET, so the bundled
-# libomp does not pin the wheel to the runner's macOS version the way brew's
-# libomp would. Linux/Windows already use find_package(OpenMP).
-if(APPLE)
-  if(DEFINED ENV{CIBUILDWHEEL})
-    # Restore the pristine upstream file so the from-source build is used even if
-    # a prior local/pixi configure patched it in this tree (keeps the wheel build
-    # independent of build order). No-op on a fresh checkout; quiet if not a git
-    # tree (e.g. an sdist build, which does not set CIBUILDWHEEL anyway).
-    execute_process(
-      COMMAND git -C ${SWMM_DIR} checkout -- cmake/openmp.cmake
-      ERROR_QUIET)
-  else()
-    file(WRITE ${SWMM_DIR}/cmake/openmp.cmake "find_package(OpenMP REQUIRED C)\n")
-  endif()
-endif()
+# macOS OpenMP handling: transiently patch the submodule's cmake/openmp.cmake to
+# find_package (linking the conda llvm-openmp) for local/pixi dev, then restore it
+# after add_subdirectory so the unmaintained submodule stays clean. See the module
+# header for the full rationale (conda-toolchain FetchContent failure, cibuildwheel
+# from-source build, and the concurrent-configure caveat).
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/swmm_openmp.cmake)
+swmm_engine_openmp_pre(${SWMM_DIR})
 
 # Windows: SWMM's install() calls InstallRequiredSystemLibraries, which vendors
 # the MSVC runtime DLLs next to the engine. Also include the OpenMP runtime
@@ -49,3 +35,7 @@ endif()
 # bin/ + ../lib/ layout that runswmm's RPATH (@loader_path/../lib, $ORIGIN/../lib)
 # and swmmer.run.find_output_lib already expect.
 add_subdirectory(${SWMM_DIR} ${CMAKE_BINARY_DIR}/swmm-build)
+
+# Restore the transient local-dev openmp.cmake patch now that add_subdirectory has
+# consumed it (find_package is an imported target -- build never re-reads it).
+swmm_engine_openmp_post(${SWMM_DIR})
