@@ -119,3 +119,6 @@ data
 !tests/data/
 !tests/data/**
 .nox
+
+# OpenMP configure lock (see cmake/swmm_openmp.cmake)
+.swmm-openmp.lock
